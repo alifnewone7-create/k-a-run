@@ -25,12 +25,6 @@ import type { AccountStatus, TelegramAccount } from "@/lib/types"
 
 type AccountRow = Omit<TelegramAccount, "session_string"> & { has_session: boolean }
 
-function mask(value: string | null) {
-  if (!value) return "—"
-  if (value.length <= 6) return value
-  return `${value.slice(0, 3)}••••${value.slice(-3)}`
-}
-
 const WAITING: AccountStatus[] = ["api_pending", "login_pending"]
 
 export function AccountCard({ account, onChange }: { account: AccountRow; onChange: () => void }) {
@@ -128,25 +122,6 @@ export function AccountCard({ account, onChange }: { account: AccountRow; onChan
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          <div>
-            <p className="text-xs text-muted-foreground">App title</p>
-            <p className="font-medium">{account.app_title || "—"}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Short name</p>
-            <p className="font-medium">{account.short_name || "—"}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">API ID</p>
-            <p className="font-mono">{account.api_id ?? "—"}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">API hash</p>
-            <p className="font-mono">{mask(account.api_hash)}</p>
-          </div>
-        </div>
-
         {account.last_error ? (
           <p className="flex items-start gap-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive">
             <AlertCircle className="mt-0.5 size-3.5 shrink-0" />

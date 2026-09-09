@@ -61,16 +61,9 @@ export function AddAccountDialog({ onAdded }: { onAdded: () => void }) {
             <Label htmlFor="label">Label (optional)</Label>
             <Input id="label" name="label" placeholder="e.g. Bot #1" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="app_title">App title</Label>
-              <Input id="app_title" name="app_title" defaultValue="Iamhear" />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="short_name">Short name</Label>
-              <Input id="short_name" name="short_name" defaultValue="iamheardeveloper" />
-            </div>
-          </div>
+          {/* App title / short name are still saved to the DB, just not shown in the UI. */}
+          <input type="hidden" name="app_title" value="Iamhear" />
+          <input type="hidden" name="short_name" value="iamheardeveloper" />
           <DialogFooter>
             <Button type="submit" disabled={pending} className="w-full sm:w-auto">
               {pending ? "Adding..." : "Add & collect API"}
