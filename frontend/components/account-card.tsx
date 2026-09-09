@@ -65,6 +65,7 @@ export function AccountCard({ account, onChange }: { account: AccountRow; onChan
             disabled={pending}
             onClick={() => setDeleteStep(1)}
             aria-label="Delete account"
+            data-testid="delete-account-button"
           >
             <Trash2 className="size-4" />
           </Button>

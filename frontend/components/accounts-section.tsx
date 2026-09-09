@@ -181,7 +181,7 @@ export function AccountsSection() {
                 {frozenCount} frozen account{frozenCount === 1 ? "" : "s"}
               </p>
               <p className="text-xs text-muted-foreground">
-                Telegram froze these — they can no longer view, react, vote, or join streams. Removing them keeps your
+                Telegram froze these — they can no longer view, react, vote, or join channels. Removing them keeps your
                 fleet clean.
               </p>
             </div>
