@@ -68,7 +68,7 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
       {/* Left-side sliding sidebar */}
       <aside
         data-testid="mobile-nav-sheet"
-        className={`fixed inset-y-0 left-0 z-50 flex w-[85vw] max-w-xs flex-col border-r border-border/60 glass-strong shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[85vw] max-w-xs flex-col border-r border-border/60 bg-card shadow-2xl transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         role="dialog"
