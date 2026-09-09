@@ -120,7 +120,7 @@ export async function startLogin(accountId: number) {
 /**
  * Step 2b: Submit the userbot login code (and 2FA password if required). On
  * success the agent stores the session string and the account becomes
- * `logged_in` — ready to join live streams.
+ * `logged_in` — ready to work.
  */
 export async function submitLoginCode(formData: FormData) {
   await requireAuth()

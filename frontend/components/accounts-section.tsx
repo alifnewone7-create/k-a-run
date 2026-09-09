@@ -203,7 +203,7 @@ export function AccountsSection() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {frozenCount} frozen account{frozenCount === 1 ? "" : "s"}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes every account Telegram has frozen, along with their jobs and livestream history.
+              This permanently deletes every account Telegram has frozen, along with their jobs and activity history.
               Frozen accounts can&apos;t be recovered, so this only clears out dead entries. This can&apos;t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

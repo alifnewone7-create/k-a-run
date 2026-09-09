@@ -1,14 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Radio, Users, Eye, Vote, Smile, UserCog, UserPlus, Trash2, MessageSquare } from "lucide-react"
+import { Users, Eye, Vote, Smile, UserCog, UserPlus, Trash2, MessageSquare } from "lucide-react"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { MobileNav } from "@/components/mobile-nav"
 import { DesktopSidebar } from "@/components/desktop-sidebar"
 import { AgentStatusBar } from "@/components/agent-status-bar"
 import { DbStatusBanner } from "@/components/db-status-banner"
 import { AccountsSection } from "@/components/accounts-section"
-import { LivestreamSection } from "@/components/livestream-section"
 import { ViewTargetsSection } from "@/components/view-targets-section"
 import { VoteSection } from "@/components/vote-section"
 import { ReactionsSection } from "@/components/reactions-section"
@@ -20,7 +19,6 @@ import { ReviewSection } from "@/components/review-section"
 const NAV = [
   { value: "accounts", label: "Users", icon: Users },
   { value: "channel-join", label: "Channel Join", icon: UserPlus },
-  { value: "livestream", label: "Live Stream", icon: Radio },
   { value: "view", label: "Live View", icon: Eye },
   { value: "vote", label: "Vote", icon: Vote },
   { value: "reactions", label: "Reactions", icon: Smile },
@@ -116,9 +114,6 @@ export function Dashboard() {
               </TabsContent>
               <TabsContent value="channel-join" className="animate-rise">
                 <ChannelJoinSection />
-              </TabsContent>
-              <TabsContent value="livestream" className="animate-rise">
-                <LivestreamSection />
               </TabsContent>
               <TabsContent value="view" className="animate-rise">
                 <ViewTargetsSection />

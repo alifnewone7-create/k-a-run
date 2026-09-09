@@ -61,8 +61,6 @@ export type JobType =
   | "submit_mtproto_code" // pass the my.telegram.org login code to the agent
   | "send_login_code" // request a userbot login code (sent to the phone)
   | "submit_login_code" // pass the userbot login code (+ 2FA password) to the agent
-  | "join_livestream" // join the live stream / video chat of a chat
-  | "leave_livestream" // leave the live stream
   | "join_channel" // join a channel/group so future view/react/vote actions work
   | "view_post" // view a channel post from every logged-in userbot
   | "detect_poll" // read the most recent poll in a channel and fill in vote_targets
@@ -83,20 +81,6 @@ export interface Job {
   error: string | null
   attempts: number
   claimed_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-export type LivestreamStatus = "idle" | "joining" | "active" | "leaving" | "stopped" | "failed"
-
-export interface LivestreamTarget {
-  id: number
-  chat_link: string
-  title: string | null
-  status: LivestreamStatus
-  joined_count: number
-  total_count: number
-  last_error: string | null
   created_at: string
   updated_at: string
 }

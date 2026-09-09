@@ -10,9 +10,9 @@ async function requireAuth() {
   if (!(await isAuthenticated())) throw new Error("Unauthorized")
 }
 
-// Queue one `join_channel` job per account in a SINGLE round-trip (UNNEST), the
-// same batch pattern the livestream join uses. This keeps starting a 500-1000
-// bot join fast and inside serverless limits instead of ~2 queries per bot.
+// Queue one `join_channel` job per account in a SINGLE round-trip (UNNEST). This
+// keeps starting a 500-1000 bot join fast and inside serverless limits instead
+// of ~2 queries per bot.
 async function enqueueJoinBatch(targetId: number, chatLink: string, accountIds: number[]) {
   if (accountIds.length === 0) return
   await query(

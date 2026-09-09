@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Menu, X, Users, LogOut, Eye, Vote, Smile, UserCog, UserPlus, Radio, Trash2, MessageSquare } from "lucide-react"
+import { Menu, X, Users, LogOut, Eye, Vote, Smile, UserCog, UserPlus, Trash2, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { logoutAction } from "@/app/actions/auth"
 import {
@@ -25,7 +25,6 @@ interface Tab {
 const TABS: Tab[] = [
   { value: "accounts", label: "Users", icon: <Users className="size-[18px]" /> },
   { value: "channel-join", label: "Channel Join", icon: <UserPlus className="size-[18px]" /> },
-  { value: "livestream", label: "Live Stream Join", icon: <Radio className="size-[18px]" /> },
   { value: "view", label: "Live View", icon: <Eye className="size-[18px]" /> },
   { value: "vote", label: "Vote", icon: <Vote className="size-[18px]" /> },
   { value: "reactions", label: "Reactions", icon: <Smile className="size-[18px]" /> },
