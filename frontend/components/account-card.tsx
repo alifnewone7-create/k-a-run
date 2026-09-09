@@ -253,7 +253,7 @@ export function AccountCard({ account, onChange }: { account: AccountRow; onChan
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm text-chart-3">
               <ShieldCheck className="size-4" />
-              Session stored — ready to join live streams.
+              Session stored.
             </div>
             <AccountMessagesDialog
               accountId={account.id}
