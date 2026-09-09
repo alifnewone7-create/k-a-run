@@ -53,12 +53,16 @@ const MODES: { value: ReactionMode; label: string; desc: string }[] = [
   { value: "slow", label: "Slow", desc: "Reactions trickle in slowly over several minutes." },
   { value: "medium", label: "Medium", desc: "Reactions arrive at a natural, moderate pace." },
   { value: "fast", label: "Fast", desc: "Reactions come in quickly, within seconds." },
-  { value: "custom", label: "Custom", desc: "All userbots finish within an exact time window you set." },
 ]
 
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-chart-3/20 text-chart-3 border-transparent",
   paused: "bg-muted text-muted-foreground",
+}
+
+function safeMode(m: ReactionMode): ReactionMode {
+  // 'custom' was removed from the UI; fall back to the closest preset.
+  return MODES.some((x) => x.value === m) ? m : "medium"
 }
 
 function timeAgo(iso: string | null): string {
@@ -206,7 +210,7 @@ function ConfigFields({
           <Gauge className="size-4 text-primary" />
           Speed
         </Label>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-3 gap-2">
           {MODES.map((m) => (
             <button
               key={m.value}
@@ -222,36 +226,6 @@ function ConfigFields({
           ))}
         </div>
         <p className="text-xs text-muted-foreground">{MODES.find((m) => m.value === mode)?.desc}</p>
-
-        {mode === "custom" ? (
-          <div className="mt-1 flex flex-col gap-2 rounded-md border border-border bg-muted/40 p-3">
-            <Label className="text-xs">Finish all reactions within</Label>
-            <div className="flex items-end gap-3">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">Minutes</span>
-                <Input
-                  type="number"
-                  min={5}
-                  max={60}
-                  placeholder="5"
-                  value={minutes || ""}
-                  onChange={(e) =>
-                    setMinutes(Math.min(60, Math.max(0, Number.parseInt(e.target.value || "0", 10))))
-                  }
-                  onBlur={(e) => {
-                    const n = Number.parseInt(e.target.value || "0", 10)
-                    setMinutes(Math.min(60, Math.max(5, Number.isNaN(n) ? 5 : n)))
-                  }}
-                  className="h-9 w-24"
-                />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Between 5 and 60 minutes. Userbots react one by one, spread evenly across this window so it looks like
-              real users. A longer window is safer (more spacing); 5–15 minutes works well for most channels.
-            </p>
-          </div>
-        ) : null}
       </div>
 
       <Separator />
@@ -317,7 +291,7 @@ function EditDialog({ target, onSaved, userbots }: { target: ReactionTarget; onS
   const [open, setOpen] = useState(false)
   const [chatId, setChatId] = useState(target.chat_id != null ? String(target.chat_id) : "")
   const [emojis, setEmojis] = useState<string[]>(target.emojis)
-  const [mode, setMode] = useState<ReactionMode>(target.mode)
+  const [mode, setMode] = useState<ReactionMode>(safeMode(target.mode))
   const [minutes, setMinutes] = useState(Math.min(60, Math.max(5, target.custom_minutes)))
   const [reactMin, setReactMin] = useState(target.react_min ?? 0)
   const [reactMax, setReactMax] = useState(target.react_max ?? 0)
@@ -326,7 +300,7 @@ function EditDialog({ target, onSaved, userbots }: { target: ReactionTarget; onS
   function reset() {
     setChatId(target.chat_id != null ? String(target.chat_id) : "")
     setEmojis(target.emojis)
-    setMode(target.mode)
+    setMode(safeMode(target.mode))
     setMinutes(Math.min(60, Math.max(5, target.custom_minutes)))
     setReactMin(target.react_min ?? 0)
     setReactMax(target.react_max ?? 0)
