@@ -50,9 +50,13 @@ function keepEmojiOnly(input: string): string {
 }
 
 const MODES: { value: ReactionMode; label: string; desc: string }[] = [
-  { value: "slow", label: "Slow", desc: "Reactions trickle in slowly over several minutes." },
-  { value: "medium", label: "Medium", desc: "Reactions arrive at a natural, moderate pace." },
-  { value: "fast", label: "Fast", desc: "Reactions come in quickly, within seconds." },
+  { value: "slow", label: "Slow", desc: "Biggest gap between userbots — reactions trickle in over the longest time." },
+  { value: "medium", label: "Medium", desc: "A bigger gap between userbots than Fast, so reactions come in slower." },
+  {
+    value: "fast",
+    label: "Fast",
+    desc: "The normal pacing — each userbot reacts a few seconds after the previous one.",
+  },
 ]
 
 const STATUS_STYLES: Record<string, string> = {
@@ -61,8 +65,8 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 function safeMode(m: ReactionMode): ReactionMode {
-  // 'custom' was removed from the UI; fall back to the closest preset.
-  return MODES.some((x) => x.value === m) ? m : "medium"
+  // 'custom' was removed from the UI; fall back to the normal pacing.
+  return MODES.some((x) => x.value === m) ? m : "fast"
 }
 
 function timeAgo(iso: string | null): string {
@@ -407,7 +411,7 @@ export function ReactionsSection() {
   const [link, setLink] = useState("")
   const [chatId, setChatId] = useState("")
   const [emojis, setEmojis] = useState<string[]>(["👍", "🔥", "❤️"])
-  const [mode, setMode] = useState<ReactionMode>("medium")
+  const [mode, setMode] = useState<ReactionMode>("fast")
   const [minutes, setMinutes] = useState(5)
   const [reactMin, setReactMin] = useState(0)
   const [reactMax, setReactMax] = useState(0)
@@ -441,7 +445,7 @@ export function ReactionsSection() {
       setLink("")
       setChatId("")
       setEmojis(["👍", "🔥", "❤️"])
-      setMode("medium")
+      setMode("fast")
       setMinutes(5)
       setReactMin(0)
       setReactMax(0)

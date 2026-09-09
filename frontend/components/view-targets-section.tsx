@@ -17,11 +17,49 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Eye, Play, Pause, Trash2, Loader2, Link2, AlertCircle, Hash, Pencil } from "lucide-react"
+import { Eye, Play, Pause, Trash2, Loader2, Link2, AlertCircle, Hash, Pencil, Gauge } from "lucide-react"
 import { toast } from "sonner"
 import { addViewTarget, updateViewTarget, toggleViewTarget, removeViewTarget } from "@/app/actions/view"
-import type { ViewTarget } from "@/lib/types"
+import type { SpeedMode, ViewTarget } from "@/lib/types"
 import { isTelegramLink, stripSpaces } from "@/lib/validation"
+
+const MODES: { value: SpeedMode; label: string; desc: string }[] = [
+  { value: "slow", label: "Slow", desc: "Biggest gap between userbots — views trickle in over the longest time." },
+  { value: "medium", label: "Medium", desc: "A bigger gap between userbots than Fast, so views come in slower." },
+  { value: "fast", label: "Fast", desc: "The normal pacing — each userbot views a few seconds after the previous one." },
+]
+
+function SpeedFields({ mode, setMode }: { mode: SpeedMode; setMode: (m: SpeedMode) => void }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label className="flex items-center gap-1.5">
+        <Gauge className="size-4 text-primary" />
+        Speed
+      </Label>
+      <div className="grid grid-cols-3 gap-2">
+        {MODES.map((m) => (
+          <button
+            key={m.value}
+            type="button"
+            onClick={() => setMode(m.value)}
+            data-testid={`view-speed-${m.value}`}
+            className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+              mode === m.value ? "border-primary bg-primary/15 text-foreground" : "border-border hover:bg-muted"
+            }`}
+            aria-pressed={mode === m.value}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">{MODES.find((m) => m.value === mode)?.desc}</p>
+    </div>
+  )
+}
+
+function safeMode(m: SpeedMode | string | null | undefined): SpeedMode {
+  return MODES.some((x) => x.value === m) ? (m as SpeedMode) : "fast"
+}
 
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-chart-3/20 text-chart-3 border-transparent",
@@ -118,12 +156,14 @@ function EditDialog({ target, onSaved, userbots }: { target: ViewTarget; onSaved
   const [chatId, setChatId] = useState(target.chat_id != null ? String(target.chat_id) : "")
   const [viewMin, setViewMin] = useState(target.view_min ?? 0)
   const [viewMax, setViewMax] = useState(target.view_max ?? 0)
+  const [mode, setMode] = useState<SpeedMode>(safeMode(target.mode))
   const [pending, startTransition] = useTransition()
 
   function reset() {
     setChatId(target.chat_id != null ? String(target.chat_id) : "")
     setViewMin(target.view_min ?? 0)
     setViewMax(target.view_max ?? 0)
+    setMode(safeMode(target.mode))
   }
 
   function save() {
@@ -132,6 +172,7 @@ function EditDialog({ target, onSaved, userbots }: { target: ViewTarget; onSaved
       fd.set("chat_id", chatId)
       fd.set("view_min", String(viewMin))
       fd.set("view_max", String(viewMax))
+      fd.set("mode", mode)
       const res = await updateViewTarget(target.id, fd)
       if (res?.error) {
         toast.error(res.error)
@@ -190,6 +231,8 @@ function EditDialog({ target, onSaved, userbots }: { target: ViewTarget; onSaved
             setViewMax={setViewMax}
             userbots={userbots}
           />
+          <Separator />
+          <SpeedFields mode={mode} setMode={setMode} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
@@ -214,6 +257,7 @@ export function ViewTargetsSection() {
   const [chatId, setChatId] = useState("")
   const [viewMin, setViewMin] = useState(0)
   const [viewMax, setViewMax] = useState(0)
+  const [mode, setMode] = useState<SpeedMode>("fast")
   const targets = data?.targets ?? []
   const userbots = data?.userbots ?? 0
 
@@ -228,6 +272,7 @@ export function ViewTargetsSection() {
       fd.set("chat_id", chatId)
       fd.set("view_min", String(viewMin))
       fd.set("view_max", String(viewMax))
+      fd.set("mode", mode)
       const res = await addViewTarget(fd)
       if (res?.error) {
         toast.error(res.error)
@@ -238,6 +283,7 @@ export function ViewTargetsSection() {
       setChatId("")
       setViewMin(0)
       setViewMax(0)
+      setMode("fast")
       mutate()
     })
   }
@@ -293,6 +339,11 @@ export function ViewTargetsSection() {
             setViewMax={setViewMax}
             userbots={userbots}
           />
+
+          <Separator />
+
+          <SpeedFields mode={mode} setMode={setMode} />
+
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
@@ -361,6 +412,10 @@ export function ViewTargetsSection() {
               <CardContent>
                 <Separator className="mb-3" />
                 <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs">
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">Speed</span>
+                    <span className="font-medium capitalize">{safeMode(t.mode)}</span>
+                  </div>
                   <div className="flex flex-col">
                     <span className="text-muted-foreground">Views per post</span>
                     <span className="font-medium tabular-nums">

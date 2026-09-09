@@ -139,6 +139,14 @@ CREATE TABLE IF NOT EXISTS view_targets (
 
 CREATE INDEX IF NOT EXISTS view_targets_status_idx ON view_targets (status);
 
+-- Per-post view amount range + speed mode (added later; kept as ALTERs so
+-- existing databases pick them up automatically).
+--   mode: 'fast' (original pacing) | 'medium' | 'slow' — how big a gap the
+--   agent leaves between two userbots when viewing a post.
+ALTER TABLE view_targets ADD COLUMN IF NOT EXISTS view_min INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE view_targets ADD COLUMN IF NOT EXISTS view_max INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE view_targets ADD COLUMN IF NOT EXISTS mode     TEXT    NOT NULL DEFAULT 'fast';
+
 -- Vote targets: a Telegram poll (in a public/private channel) we want to vote on
 -- The agent detects the most recent poll in the channel and fills in the
 -- question/options/poll_id/chat_id/message_id, then the panel casts votes.
@@ -204,6 +212,9 @@ CREATE TABLE IF NOT EXISTS reaction_targets (
 );
 
 CREATE INDEX IF NOT EXISTS reaction_targets_status_idx ON reaction_targets (status);
+
+ALTER TABLE reaction_targets ADD COLUMN IF NOT EXISTS react_min INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE reaction_targets ADD COLUMN IF NOT EXISTS react_max INTEGER NOT NULL DEFAULT 0;
 
 -- Profile assets: uploaded profile photos (base64), shared across accounts when
 -- the same image is applied to many accounts in one bulk edit. -----------------

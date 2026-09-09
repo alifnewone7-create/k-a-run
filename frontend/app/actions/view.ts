@@ -4,7 +4,9 @@ import { query, queryOne } from "@/lib/db"
 import { isAuthenticated } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
 import { isTelegramLink } from "@/lib/validation"
-import type { ViewTarget } from "@/lib/types"
+import type { SpeedMode, ViewTarget } from "@/lib/types"
+
+const VALID_MODES: SpeedMode[] = ["slow", "medium", "fast"]
 
 async function requireAuth() {
   if (!(await isAuthenticated())) throw new Error("Unauthorized")
@@ -28,7 +30,11 @@ function parseFields(formData: FormData) {
   const viewMin = Math.max(0, Number.parseInt(String(formData.get("view_min") ?? "0"), 10) || 0)
   const viewMax = Math.max(0, Number.parseInt(String(formData.get("view_max") ?? "0"), 10) || 0)
 
-  return { link, chatId, viewMin, viewMax }
+  // Speed: how big a gap the agent leaves between two userbots on a post.
+  const modeRaw = String(formData.get("mode") ?? "fast")
+  const mode: SpeedMode = VALID_MODES.includes(modeRaw as SpeedMode) ? (modeRaw as SpeedMode) : "fast"
+
+  return { link, chatId, viewMin, viewMax, mode }
 }
 
 function rangeError(fields: { viewMin: number; viewMax: number }): string | null {
@@ -56,9 +62,9 @@ export async function addViewTarget(formData: FormData) {
   if (existing) return { error: "That channel is already being watched." }
 
   await query(
-    `INSERT INTO view_targets (channel_link, chat_id, view_min, view_max, status, last_seen_message_id)
-     VALUES ($1, $2, $3, $4, 'active', 0)`,
-    [fields.link, fields.chatId, fields.viewMin, fields.viewMax],
+    `INSERT INTO view_targets (channel_link, chat_id, view_min, view_max, mode, status, last_seen_message_id)
+     VALUES ($1, $2, $3, $4, $5, 'active', 0)`,
+    [fields.link, fields.chatId, fields.viewMin, fields.viewMax, fields.mode],
   )
 
   revalidatePath("/")
@@ -74,9 +80,9 @@ export async function updateViewTarget(targetId: number, formData: FormData) {
 
   await query(
     `UPDATE view_targets
-     SET chat_id = $1, view_min = $2, view_max = $3, updated_at = now()
-     WHERE id = $4`,
-    [fields.chatId, fields.viewMin, fields.viewMax, targetId],
+     SET chat_id = $1, view_min = $2, view_max = $3, mode = $4, updated_at = now()
+     WHERE id = $5`,
+    [fields.chatId, fields.viewMin, fields.viewMax, fields.mode, targetId],
   )
 
   revalidatePath("/")

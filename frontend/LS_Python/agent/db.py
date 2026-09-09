@@ -1024,6 +1024,7 @@ def enqueue_view_job(
     target_id: int,
     view_min: int = 0,
     view_max: int = 0,
+    mode: str = "fast",
 ) -> None:
     """Queue a single view_post job (fans out to userbots inside the agent).
 
@@ -1031,6 +1032,9 @@ def enqueue_view_job(
     views from a random number of userbots in [view_min, view_max] instead of the
     whole pool, so a post's view count climbs gradually. 0/0 means every userbot
     views (the original behavior).
+
+    mode is the channel's speed setting from the panel ('fast' = the original
+    pacing, 'medium' / 'slow' stretch the gap between userbots).
     """
     query(
         "INSERT INTO jobs (type, account_id, payload, status) "
@@ -1043,6 +1047,7 @@ def enqueue_view_job(
                     "target_id": target_id,
                     "view_min": view_min,
                     "view_max": view_max,
+                    "mode": mode,
                 }
             ),
         ),

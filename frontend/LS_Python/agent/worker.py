@@ -658,6 +658,9 @@ async def handle_view_post(job: dict) -> dict:
     target_id = payload.get("target_id")
     view_min = int(payload.get("view_min", 0) or 0)
     view_max = int(payload.get("view_max", 0) or 0)
+    # Channel speed mode: 'fast' (original pacing), 'medium' or 'slow' — set per
+    # channel in the panel and carried on the job.
+    mode = str(payload.get("mode") or "fast")
 
     # This job is a per-shard fan-out copy (see expand_fanout_jobs). Pass the
     # shard identity so the [view_min, view_max] range is treated as ONE global
@@ -669,7 +672,7 @@ async def handle_view_post(job: dict) -> dict:
     member_ids = await db.arun(db.get_channel_member_ids, chat_id)
     count = await userbot.view_post_scheduled(
         chat_id, message_id, VIEW_SPREAD_SECONDS, view_min, view_max, shard_index, SHARD_COUNT,
-        member_ids,
+        member_ids, mode,
     )
     if target_id:
         db.bump_view_sent(int(target_id), count)
@@ -766,7 +769,7 @@ async def handle_react_post(job: dict) -> dict:
     message_id = int(p["message_id"])
     target_id = p.get("target_id")
     emojis = p.get("emojis") or []
-    mode = p.get("mode", "medium")
+    mode = p.get("mode", "fast")
     react_min = int(p.get("react_min", 0) or 0)
     react_max = int(p.get("react_max", 0) or 0)
 
@@ -784,7 +787,7 @@ async def handle_react_post(job: dict) -> dict:
     member_ids = await db.arun(db.get_channel_member_ids, chat_id)
     count = await userbot.react_post_scheduled(
         chat_id, message_id, emojis, window, react_min, react_max, shard_index, SHARD_COUNT,
-        member_ids,
+        member_ids, mode,
     )
     if target_id:
         db.bump_reaction_sent(int(target_id), count)
@@ -1366,6 +1369,7 @@ async def dispatch_views_for_target(
     latest_id: int,
     view_min: int = 0,
     view_max: int = 0,
+    mode: str = "fast",
 ) -> None:
     """
     Atomically claim the new post range and queue one view_post job per post.
@@ -1393,7 +1397,7 @@ async def dispatch_views_for_target(
     if not post_ids:
         return
     for mid in post_ids:
-        db.enqueue_view_job(chat_id, mid, target_id, view_min, view_max)
+        db.enqueue_view_job(chat_id, mid, target_id, view_min, view_max, mode)
     db.bump_view_posts(target_id, len(post_ids))
     print(f"[view] target {target_id}: queued {len(post_ids)} new post(s) up to #{latest_id}")
 
@@ -1426,6 +1430,7 @@ async def live_view_dispatch(chat_id: int, message_id: int) -> None:
         message_id,
         int(target.get("view_min", 0) or 0),
         int(target.get("view_max", 0) or 0),
+        str(target.get("mode") or "fast"),
     )
 
 
@@ -1484,6 +1489,7 @@ async def poll_view_targets() -> None:
                 latest,
                 int(t.get("view_min", 0) or 0),
                 int(t.get("view_max", 0) or 0),
+                str(t.get("mode") or "fast"),
             )
         except userbot.UserbotError:
             # No warm userbots yet - try again next cycle, don't spam errors.
@@ -1523,7 +1529,7 @@ async def dispatch_reactions_for_target(target: dict, chat_id: int, latest_id: i
     if isinstance(emojis, str):  # safety: in case the driver returns raw JSON text
         import json as _json
         emojis = _json.loads(emojis)
-    mode = target.get("mode", "medium")
+    mode = target.get("mode", "fast")
     custom_minutes = int(target.get("custom_minutes", 5) or 5)
     react_min = int(target.get("react_min", 0) or 0)
     react_max = int(target.get("react_max", 0) or 0)

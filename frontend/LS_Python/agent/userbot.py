@@ -299,6 +299,24 @@ def vlog(msg: str) -> None:
 ACCOUNT_DELAY_MIN = float(_os.environ.get("AGENT_ACCOUNT_DELAY_MIN", "3"))
 ACCOUNT_DELAY_MAX = float(_os.environ.get("AGENT_ACCOUNT_DELAY_MAX", "20"))
 
+# ---------------------------------------------------------------------------
+# Speed modes (fast / medium / slow) — chosen per channel in the panel
+# ---------------------------------------------------------------------------
+# The panel's Speed setting multiplies the per-account gap. 'fast' is EXACTLY
+# the behaviour the fleet had before this setting existed (gap = the account's
+# own 3-20s window); 'medium' waits a bit longer between accounts and 'slow'
+# longer still, so views/reactions trickle in over a much wider period.
+PACE_FACTORS = {
+    "fast": float(_os.environ.get("AGENT_PACE_FAST", "1")),
+    "medium": float(_os.environ.get("AGENT_PACE_MEDIUM", "2.5")),
+    "slow": float(_os.environ.get("AGENT_PACE_SLOW", "5")),
+}
+
+
+def pace_factor(mode: Optional[str]) -> float:
+    """Gap multiplier for a panel speed mode ('fast' when unknown/missing)."""
+    return PACE_FACTORS.get(str(mode or "fast").lower(), PACE_FACTORS["fast"])
+
 # Earliest monotonic time each account may make its next request (short pacing).
 _ACCOUNT_NEXT_FREE: dict[int, float] = {}
 # One asyncio.Lock per account so its actions run strictly one-by-one within
@@ -366,7 +384,7 @@ def account_in_pacing_cooldown(account_id: int) -> bool:
 SEQUENTIAL_ACTIONS = _os.environ.get("AGENT_SEQUENTIAL_ACTIONS", "1").lower() not in ("0", "false", "no")
 
 
-async def run_pool_actions(pool, action, offsets=None) -> list:
+async def run_pool_actions(pool, action, offsets=None, pace: float = 1.0) -> list:
     """
     Run `action(account_id, client)` for every (account_id, client) in `pool`.
 
@@ -375,12 +393,17 @@ async def run_pool_actions(pool, action, offsets=None) -> list:
     next account begins. One account's slowness/flood never overlaps another's —
     they simply drip in order.
 
+    `pace` is the channel's speed multiplier (see PACE_FACTORS): 1.0 = fast (the
+    original gaps), 2.5 = medium, 5 = slow. It stretches the gap between
+    accounts, which is what actually makes a channel go slower or faster.
+
     Concurrent mode (AGENT_SEQUENTIAL_ACTIONS=0): the legacy behaviour — fire all
     accounts together, merely staggered by `offsets` across a window.
 
     Exceptions from a single account are captured and returned in place (never
     raised) so one bad account can't abort the whole batch.
     """
+    pace = max(0.1, float(pace or 1.0))
     results: list = []
     if SEQUENTIAL_ACTIONS:
         for acc_id, client in pool:
@@ -389,13 +412,15 @@ async def run_pool_actions(pool, action, offsets=None) -> list:
             except Exception as e:  # noqa: BLE001 - isolate per-account failures
                 results.append(e)
             # The gap BEFORE the next account starts = this account's personal
-            # delay window. This is what the user sees as "3s+ between each".
-            await asyncio.sleep(_account_pacing_delay(acc_id))
+            # delay window, stretched by the channel's speed mode.
+            await asyncio.sleep(_account_pacing_delay(acc_id) * pace)
         return results
 
     # Legacy concurrent fan-out (staggered starts, then all overlap).
     if offsets is None:
         offsets = [0.0] * len(pool)
+    else:
+        offsets = [d * pace for d in offsets]
 
     async def _staggered(acc_id, client, delay):
         if delay > 0:
@@ -2288,6 +2313,7 @@ async def view_post_scheduled(
     shard_index: int = 0,
     shard_count: int = 1,
     member_ids: Optional[list[int]] = None,
+    mode: str = "fast",
 ) -> int:
     """
     View a single post from the warm userbots, trickling the views in over
@@ -2376,8 +2402,8 @@ async def view_post_scheduled(
     # Drips one account at a time (default), each waiting its personal delay
     # before the next — the per-account gap the fleet uses to avoid bursts.
     started = time.monotonic()
-    log(f"[view] chat {chat_id} msg #{message_id}: starting with {len(pool)} userbot(s)")
-    results = await run_pool_actions(pool, _one, offsets)
+    log(f"[view] chat {chat_id} msg #{message_id}: starting with {len(pool)} userbot(s), speed {mode}")
+    results = await run_pool_actions(pool, _one, offsets, pace_factor(mode))
     await _note_membership(chat_id, ok_ids, bad_ids)
     done = sum(1 for ok in results if ok is True)
     log(
@@ -2773,6 +2799,7 @@ async def react_post_scheduled(
     shard_index: int = 0,
     shard_count: int = 1,
     member_ids: Optional[list[int]] = None,
+    mode: str = "fast",
 ) -> int:
     """
     React to a single post from the warm userbots, staggering each userbot's
@@ -2852,11 +2879,11 @@ async def react_post_scheduled(
     started = time.monotonic()
     log(
         f"[react] chat {chat_id} msg #{message_id}: starting with {len(pool)} userbot(s), "
-        f"emojis {emojis}"
+        f"emojis {emojis}, speed {mode}"
     )
     # Probes run one-by-one too (with their own gap) so even the test phase never
     # fires two accounts at the same instant.
-    probe_results = await run_pool_actions(probe_pool, _gated_react)
+    probe_results = await run_pool_actions(probe_pool, _gated_react, None, pace_factor(mode))
     success = sum(1 for r in probe_results if r == "ok")
     blocked = sum(1 for r in probe_results if r == "blocked")
 
@@ -2882,7 +2909,7 @@ async def react_post_scheduled(
     # Drip the reactions one account at a time (default): each account reacts,
     # then waits its own personal delay before the next account reacts. One bad
     # account is captured in-place and never aborts the batch.
-    results = await run_pool_actions(rest_pool, _gated_react, offsets)
+    results = await run_pool_actions(rest_pool, _gated_react, offsets, pace_factor(mode))
     await _note_membership(chat_id, ok_ids, [])
     done = success + sum(1 for r in results if r == "ok")
     log(

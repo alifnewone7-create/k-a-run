@@ -135,12 +135,18 @@ export interface VoteTargetRow extends VoteTarget {
 
 export type ViewTargetStatus = "active" | "paused"
 
+// Speed presets: how big a gap the agent leaves between two userbots.
+// 'fast' is the original pacing, 'medium' is slower, 'slow' slower still.
+export type SpeedMode = "slow" | "medium" | "fast"
+
 export interface ViewTarget {
   id: number
   channel_link: string
   chat_id: number | null
   title: string | null
   status: ViewTargetStatus
+  // How fast the userbots view a post (gap between each userbot).
+  mode: SpeedMode
   // Per-post view count range ("low to high"). When view_max > 0 a random number
   // of userbots in [view_min, view_max] views each post so the count climbs
   // gradually. When both are 0, every logged-in userbot views the post.
@@ -156,8 +162,9 @@ export interface ViewTarget {
   updated_at: string
 }
 
-// Pacing presets for auto-reactions. 'custom' uses custom_minutes as the exact
-// window in which all userbots finish reacting.
+// Speed presets for auto-reactions: they set the gap the agent leaves between
+// two userbots ('fast' = the original pacing, 'medium'/'slow' are slower).
+// 'custom' is legacy (no longer offered in the UI) and behaves like medium.
 export type ReactionMode = "slow" | "medium" | "fast" | "custom"
 export type ReactionTargetStatus = "active" | "paused"
 
