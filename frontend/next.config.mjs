@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Hide the Next.js dev tools indicator (#devtools-indicator) shown in dev
+  devIndicators: false,
   // Preview environment runs the dev server behind an external proxy host, so
   // the browser Origin differs from x-forwarded-host. Allowlist both so HMR and
   // Server Actions work. Harmless in production.
