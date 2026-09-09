@@ -100,7 +100,7 @@ export function AccountsSection() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold tracking-tight">Users</h2>
           <p className="text-sm text-muted-foreground">
             {accounts.length} account{accounts.length === 1 ? "" : "s"} ·{" "}
@@ -108,9 +108,9 @@ export function AccountsSection() {
             {normalized ? ` · ${filtered.length} matching` : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           {searchOpen ? (
-            <div className="relative flex items-center">
+            <div className="relative flex min-w-0 flex-1 items-center sm:flex-none">
               <Search className="pointer-events-none absolute left-2.5 size-4 text-muted-foreground" />
               <Input
                 ref={inputRef}
@@ -120,7 +120,7 @@ export function AccountsSection() {
                   if (e.key === "Escape") closeSearch()
                 }}
                 placeholder="Search by number or label…"
-                className="w-56 pl-8 pr-8"
+                className="w-full pl-8 pr-8 sm:w-56"
                 aria-label="Search userbots"
               />
               <Button

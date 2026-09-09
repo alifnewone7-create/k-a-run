@@ -53,9 +53,9 @@ export function ImportAccountsDialog({ onImported }: { onImported: () => void })
     >
       <DialogTrigger
         render={
-          <Button variant="outline" className="gap-2 bg-transparent" data-testid="import-accounts-button">
+          <Button variant="outline" className="gap-2 bg-transparent" data-testid="import-accounts-button" aria-label="Import CSV" title="Import CSV">
             <Upload className="size-4" />
-            Import CSV
+            <span className="hidden sm:inline">Import CSV</span>
           </Button>
         }
       />

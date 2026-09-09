@@ -47,16 +47,16 @@ export function AccountCard({ account, onChange }: { account: AccountRow; onChan
   return (
     <Card data-testid="account-card" className="overflow-hidden border-border/60 transition-colors hover:border-primary/40">
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
             <Phone className="size-4" />
           </div>
-          <div>
-            <p className="font-medium leading-tight">{account.label || account.phone_number}</p>
-            <p className="text-xs text-muted-foreground">{account.phone_number}</p>
+          <div className="min-w-0">
+            <p className="truncate font-medium leading-tight">{account.label || account.phone_number}</p>
+            <p className="truncate text-xs text-muted-foreground">{account.phone_number}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex min-w-0 shrink-0 items-center gap-1">
           <StatusBadge status={account.status} />
           <Button
             variant="ghost"

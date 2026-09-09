@@ -18,5 +18,9 @@ const MAP: Record<AccountStatus, { label: string; className: string }> = {
 
 export function StatusBadge({ status }: { status: AccountStatus }) {
   const cfg = MAP[status] ?? MAP.new
-  return <Badge data-testid="account-status-badge" className={cfg.className}>{cfg.label}</Badge>
+  return (
+    <Badge data-testid="account-status-badge" className={`${cfg.className} whitespace-normal text-center leading-tight`}>
+      {cfg.label}
+    </Badge>
+  )
 }

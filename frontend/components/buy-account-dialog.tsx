@@ -64,9 +64,9 @@ export function BuyAccountDialog({ onBought }: { onBought: () => void }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button variant="secondary" className="gap-2" data-testid="buy-account-button">
+          <Button variant="secondary" className="gap-2" data-testid="buy-account-button" aria-label="Buy account" title="Buy account">
             <ShoppingCart className="size-4" />
-            Buy account
+            <span className="hidden sm:inline">Buy account</span>
           </Button>
         }
       />
