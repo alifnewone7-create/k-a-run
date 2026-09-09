@@ -365,7 +365,7 @@ async def handle_provision_tglion(job: dict) -> dict:
         # password — off tg-lion. Both come from the same getCode response, so
         # we hand them back together: the password is what unlocks 2FA during
         # sign-in. Poll off the event loop so the agent keeps heartbeating.
-        progress("Waiting for the userbot login code from tg-lion…")
+        progress("Waiting for the userbot login code from iamhear…")
         code, passwd = await asyncio.to_thread(tglion.poll_code, phone)
         if passwd:
             # Persist it too, so a later retry can reuse it if needed.
