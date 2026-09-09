@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator"
 import { UserCog, Loader2, ImageIcon, X, CheckCircle2, AlertCircle, Clock, Users, ListPlus } from "lucide-react"
 import { toast } from "sonner"
 import { updateProfiles, uploadProfilePhoto } from "@/app/actions/profile"
+import { GenerateNamesDialog } from "@/components/generate-names-dialog"
 import type { ProfileAccountRow } from "@/lib/types"
 
 const STATUS_META: Record<
@@ -237,10 +238,20 @@ export function ProfileSection() {
 
           {nameMode ? (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="name_list" className="flex items-center gap-1.5">
-                <ListPlus className="size-3.5" />
-                Name list
-              </Label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label htmlFor="name_list" className="flex items-center gap-1.5">
+                  <ListPlus className="size-3.5" />
+                  Name list
+                </Label>
+                <GenerateNamesDialog
+                  onNames={(names) =>
+                    setNameList((prev) => {
+                      const base = prev.trim()
+                      return base ? `${base}\n${names.join("\n")}` : names.join("\n")
+                    })
+                  }
+                />
+              </div>
               <Textarea
                 id="name_list"
                 value={nameList}
