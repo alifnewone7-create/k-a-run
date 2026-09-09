@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Telegram Ultra',
     description: 'Next-Gen Telegram Userbot & Control Panel',
-    images: [{ url: '/telegram-ultra.png', width: 1260, height: 1260, alt: 'Telegram Ultra' }],
+    images: [{ url: '/telegram-ultra.png', width: 1254, height: 1254, alt: 'Telegram Ultra' }],
   },
   twitter: {
     card: 'summary_large_image',
