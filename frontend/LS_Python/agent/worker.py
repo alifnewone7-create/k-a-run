@@ -1383,6 +1383,15 @@ async def dispatch_views_for_target(
     post_ids = list(range(start, latest_id + 1))
     if not post_ids:
         return
+    # A grouped post (album / grouped photos) arrives as several messages sharing
+    # one media_group_id: collapse each group to its first message so it counts
+    # as ONE post and gets one view job (the view call covers all its items).
+    try:
+        post_ids = await userbot.collapse_album_post_ids(chat_id, post_ids)
+    except Exception as e:
+        print(f"[!] album grouping failed for chat {chat_id}: {e}")
+    if not post_ids:
+        return
     for mid in post_ids:
         db.enqueue_view_job(chat_id, mid, target_id, view_min, view_max)
     db.bump_view_posts(target_id, len(post_ids))
@@ -1497,6 +1506,16 @@ async def dispatch_reactions_for_target(target: dict, chat_id: int, latest_id: i
         return  # already handled by the other detection path
     start = max(int(old) + 1, latest_id - VIEW_MAX_BACKFILL + 1)
     post_ids = list(range(start, latest_id + 1))
+    if not post_ids:
+        return
+
+    # Grouped post (album): collapse the group's messages to its first message so
+    # the album is reacted to ONCE, as a single post, instead of one reaction job
+    # per item (which scattered reactions across the group's items).
+    try:
+        post_ids = await userbot.collapse_album_post_ids(chat_id, post_ids)
+    except Exception as e:
+        print(f"[!] album grouping failed for chat {chat_id}: {e}")
     if not post_ids:
         return
 

@@ -1918,6 +1918,98 @@ def _first_client() -> Optional[Client]:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Albums (grouped media): treat one media group as ONE post
+# ---------------------------------------------------------------------------
+# Telegram sends an album / grouped post as N separate messages that share a
+# media_group_id. Without grouping, every item was detected as its own post, so
+# a 5-photo album produced 5 view/reaction jobs (the glitch: reactions scattered
+# across the items and the view/post counters inflated). We collapse a group to
+# its FIRST (lowest) message id — the album's canonical post — and, for views,
+# increment every item of the group in a single call so the album's displayed
+# view count stays consistent.
+_ALBUM_CACHE: dict[tuple[int, int], tuple[float, list[int]]] = {}
+_ALBUM_CACHE_TTL = 600.0
+
+
+def _album_cache_get(chat_id: int, message_id: int) -> Optional[list[int]]:
+    hit = _ALBUM_CACHE.get((int(chat_id), int(message_id)))
+    if hit is None:
+        return None
+    ts, ids = hit
+    if time.monotonic() - ts > _ALBUM_CACHE_TTL:
+        _ALBUM_CACHE.pop((int(chat_id), int(message_id)), None)
+        return None
+    return ids
+
+
+def _album_cache_put(chat_id: int, message_id: int, ids: list[int]) -> None:
+    if len(_ALBUM_CACHE) > 5000:
+        _ALBUM_CACHE.clear()
+    _ALBUM_CACHE[(int(chat_id), int(message_id))] = (time.monotonic(), list(ids))
+
+
+async def album_ids_with_client(client: Client, chat_id: int, message_id: int) -> list[int]:
+    """
+    All message ids of the media group `message_id` belongs to (sorted), or []
+    when the message is a normal standalone post. Never raises.
+    """
+    cached = _album_cache_get(chat_id, message_id)
+    if cached is not None:
+        return list(cached)
+    ids: list[int] = []
+    try:
+        msgs = await client.get_media_group(chat_id, int(message_id))
+        ids = sorted({int(m.id) for m in (msgs or []) if getattr(m, "id", None)})
+        if len(ids) < 2:
+            ids = []
+    except Exception:
+        ids = []
+    _album_cache_put(chat_id, message_id, ids)
+    for mid in ids:
+        _album_cache_put(chat_id, mid, ids)
+    return list(ids)
+
+
+async def album_ids(chat_id: int, message_id: int) -> list[int]:
+    """album_ids_with_client using any warm userbot ([] when none / not an album)."""
+    cached = _album_cache_get(chat_id, message_id)
+    if cached is not None:
+        return list(cached)
+    client = _first_client()
+    if client is None:
+        return []
+    return await album_ids_with_client(client, chat_id, message_id)
+
+
+async def collapse_album_post_ids(chat_id: int, post_ids: list[int]) -> list[int]:
+    """
+    Collapse a contiguous range of newly detected message ids so that every
+    album counts as a SINGLE post: each media group is represented only by its
+    first (lowest) message id, and only when that first id falls inside this
+    range (otherwise the album was already dispatched earlier). Standalone posts
+    pass through untouched.
+    """
+    if not post_ids:
+        return []
+    lowest = min(int(m) for m in post_ids)
+    kept: list[int] = []
+    seen_roots: set[int] = set()
+    for mid in post_ids:
+        mid = int(mid)
+        group = await album_ids(chat_id, mid)
+        if not group:
+            kept.append(mid)
+            continue
+        root = min(group)
+        if root < lowest or root in seen_roots:
+            continue  # album already represented / already handled before
+        seen_roots.add(root)
+        kept.append(root)
+    return sorted(set(kept))
+
+
+
 # How many warm userbots to try when resolving a channel before giving up. A
 # cached numeric chat_id can only be resolved by an account that already has the
 # channel's access_hash (one that has seen/joined it); a different account throws
@@ -2164,6 +2256,8 @@ async def view_post_all(chat_id: int, message_id: int, spread_seconds: float = 0
 
     offsets = _natural_arrival_offsets(len(pool), spread_seconds)
     sem = _get_action_sem()
+    # An album is ONE post: view all of its items in a single call.
+    view_ids = await album_ids(chat_id, message_id) or [int(message_id)]
 
     async def _one(acc_id: int, client: Client) -> bool:
         # Gate the actual MTProto work so a big pool can't flood the event loop
@@ -2172,7 +2266,7 @@ async def view_post_all(chat_id: int, message_id: int, spread_seconds: float = 0
             try:
                 peer = await client.resolve_peer(chat_id)
                 await client.invoke(
-                    GetMessagesViews(peer=peer, id=[int(message_id)], increment=True)
+                    GetMessagesViews(peer=peer, id=list(view_ids), increment=True)
                 )
                 return True
             except Exception as e:
@@ -2253,6 +2347,9 @@ async def view_post_scheduled(
     sem = _get_action_sem()
     ok_ids: list[int] = []
     bad_ids: list[int] = []
+    # A grouped post (album) is ONE post: increment the views of every item of
+    # the media group in a single call so all its parts show the same count.
+    view_ids = await album_ids(chat_id, message_id) or [int(message_id)]
 
     async def _one(acc_id: int, client: Client) -> bool:
         # Gate the actual MTProto work so a big pool can't flood the event loop
@@ -2261,7 +2358,7 @@ async def view_post_scheduled(
             try:
                 peer = await client.resolve_peer(chat_id)
                 await client.invoke(
-                    GetMessagesViews(peer=peer, id=[int(message_id)], increment=True)
+                    GetMessagesViews(peer=peer, id=list(view_ids), increment=True)
                 )
                 vlog(f"[view] chat {chat_id} msg #{message_id} acct {acc_id} -> OK")
                 ok_ids.append(acc_id)
@@ -2318,6 +2415,27 @@ def _already_dispatched(chat_id: int, message_id: int) -> bool:
     return False
 
 
+_SEEN_GROUPS: dict[tuple[int, str], float] = {}
+
+
+def _already_dispatched_group(chat_id: int, media_group_id) -> bool:
+    """
+    True if this album (chat_id, media_group_id) was already dispatched recently.
+    Same check-and-set pattern as _already_dispatched, but keyed on the media
+    group so all items of one album share a single dispatch.
+    """
+    now = time.monotonic()
+    key = (int(chat_id), str(media_group_id))
+    if key in _SEEN_GROUPS:
+        return True
+    _SEEN_GROUPS[key] = now
+    if len(_SEEN_GROUPS) > 5000:
+        for k, ts in list(_SEEN_GROUPS.items()):
+            if now - ts > _SEEN_TTL_SECONDS:
+                _SEEN_GROUPS.pop(k, None)
+    return False
+
+
 async def _on_channel_post(client: Client, message) -> None:
     """Live handler: a new post arrived in a channel/group this userbot is in."""
     chat = getattr(message, "chat", None)
@@ -2326,14 +2444,30 @@ async def _on_channel_post(client: Client, message) -> None:
     # Only dispatch once per post, no matter how many userbots received it.
     if _already_dispatched(chat.id, message.id):
         return
+
+    # Grouped post (album): Telegram delivers each item of the group as its own
+    # message sharing one media_group_id. Treat the whole group as a SINGLE post:
+    # dispatch only once for the group (the dispatcher collapses the group's ids
+    # down to its first message, which is the album's canonical post).
+    message_id = int(message.id)
+    if getattr(message, "media_group_id", None) is not None:
+        if _already_dispatched_group(chat.id, message.media_group_id):
+            return
+        group = await album_ids_with_client(client, chat.id, message_id)
+        if group:
+            message_id = max(group)
+            for mid in group:
+                if mid != int(message.id):
+                    _already_dispatched(chat.id, mid)  # mark siblings as handled
+
     if _VIEW_DISPATCH is not None:
         try:
-            await _VIEW_DISPATCH(chat.id, message.id)
+            await _VIEW_DISPATCH(chat.id, message_id)
         except Exception as e:
             print(f"[!] live view dispatch failed: {e}")
     if _REACTION_DISPATCH is not None:
         try:
-            await _REACTION_DISPATCH(chat.id, message.id)
+            await _REACTION_DISPATCH(chat.id, message_id)
         except Exception as e:
             print(f"[!] live reaction dispatch failed: {e}")
 
